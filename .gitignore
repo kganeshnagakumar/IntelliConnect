@@ -19,4 +19,4 @@ db.sqlite3
 coverage/
 .pytest_cache/
 staticfiles/
-media/
+media/client_secret*.json
