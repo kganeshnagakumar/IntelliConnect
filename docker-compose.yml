@@ -1,0 +1,33 @@
+version: '3.8'
+
+services:
+  backend:
+    build: 
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend:/app
+    environment:
+      - DEBUG=True
+      - SECRET_KEY=dev_secret_key_change_in_production
+      - DATABASE_URL=sqlite:///db.sqlite3
+      - ALLOWED_HOSTS=localhost,127.0.0.1,backend
+    # Optional: Load env file if needed
+    # env_file:
+    #   - .env.example
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    environment:
+      - VITE_API_BASE_URL=http://backend:8000
+    depends_on:
+      - backend
