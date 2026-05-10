@@ -23,8 +23,8 @@ def save_user(request):
     try:
         if payload is None:
             payload = verify_google_token(token)
-    except GoogleTokenVerificationError as exc:
-        return Response({'error': str(exc)}, status=status.HTTP_401_UNAUTHORIZED)
+    except GoogleTokenVerificationError:
+        return Response({'error': 'Invalid Google token.'}, status=status.HTTP_401_UNAUTHORIZED)
     except Exception:
         return Response({'error': 'Token verification failed.'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 

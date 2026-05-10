@@ -22,7 +22,7 @@ class GoogleOAuth2Authentication(BaseAuthentication):
         try:
             payload = verify_google_token(token)
         except GoogleTokenVerificationError as exc:
-            raise AuthenticationFailed(str(exc)) from exc
+            raise AuthenticationFailed('Invalid Google token.') from exc
 
         email = payload.get('email')
         if not email:

@@ -13,6 +13,6 @@ class GoogleTokenAuthMiddleware(MiddlewareMixin):
         token = auth_header.split(' ', 1)[1].strip()
         try:
             request.google_token_payload = verify_google_token(token)
-        except GoogleTokenVerificationError as exc:
-            return JsonResponse({'error': str(exc)}, status=401)
+        except GoogleTokenVerificationError:
+            return JsonResponse({'error': 'Invalid Google token.'}, status=401)
         return None
