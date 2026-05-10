@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { 
   Users, 
   Camera, 
@@ -6,17 +6,33 @@ import {
   MoreHorizontal,
   ChevronRight,
   ListTodo,
-  BarChart2
+  BarChart2,
+  Loader2,
+  AlertCircle
 } from 'lucide-react';
 import './DashboardPage.css';
+import { DashboardStats, fetchDashboardStats } from '../../api/dashboard';
+import { getErrorMessage } from '../../utils/apiError';
 
 const DashboardPage: React.FC = () => {
-  // Hardcoded data to match the screenshot exactly as requested
-  const stats = {
-    total_meetings: 2,
-    total_tasks: 5,
-    priority_stats: { High: 0, Medium: 2, Low: 0 }
-  };
+  const [stats, setStats] = useState<DashboardStats | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const loadStats = async () => {
+      try {
+        const data = await fetchDashboardStats();
+        setStats(data);
+      } catch (err) {
+        setError(getErrorMessage(err));
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadStats();
+  }, []);
 
   const meetings = [
     {
@@ -76,45 +92,62 @@ const DashboardPage: React.FC = () => {
       
       <div className="header-underline"></div>
 
-      <div className="kpi-grid">
-        <div className="kpi-card">
-          <div className="kpi-icon-wrapper">
-            <Camera size={24} />
-          </div>
-          <div className="kpi-info">
-            <span className="kpi-label">Total Meetings</span>
-            <h3 className="kpi-value">{stats.total_meetings}</h3>
+      {loading ? (
+        <div className="flex items-center justify-center p-12">
+          <Loader2 className="animate-spin text-blue-500" size={32} />
+          <span className="ml-2 text-gray-500">Loading intelligence...</span>
+        </div>
+      ) : error ? (
+        <div className="kpi-grid">
+          <div className="kpi-card error-card col-span-full">
+            <AlertCircle className="text-red-500" size={24} />
+            <div className="ml-3">
+              <h3 className="text-red-700 font-semibold">Connection Error</h3>
+              <p className="text-red-600 text-sm">{error}</p>
+            </div>
           </div>
         </div>
+      ) : (
+        <div className="kpi-grid">
+          <div className="kpi-card">
+            <div className="kpi-icon-wrapper">
+              <Camera size={24} />
+            </div>
+            <div className="kpi-info">
+              <span className="kpi-label">Total Meetings</span>
+              <h3 className="kpi-value">{stats?.total_meetings ?? 0}</h3>
+            </div>
+          </div>
 
-        <div className="kpi-card">
-          <div className="kpi-icon-wrapper">
-            <ListTodo size={24} />
+          <div className="kpi-card">
+            <div className="kpi-icon-wrapper">
+              <ListTodo size={24} />
+            </div>
+            <div className="kpi-info">
+              <span className="kpi-label">Extracted Tasks</span>
+              <h3 className="kpi-value">{(stats as any)?.pending_tasks ?? 0}</h3>
+            </div>
           </div>
-          <div className="kpi-info">
-            <span className="kpi-label">Extracted Tasks</span>
-            <h3 className="kpi-value">{stats.total_tasks}</h3>
-          </div>
-        </div>
 
-        <div className="kpi-card priority-stats-card">
-          <div className="priority-item">
-            <span className="priority-dot red"></span>
-            <span className="label">High Priority</span>
-            <span className="value">{stats.priority_stats.High}</span>
-          </div>
-          <div className="priority-item">
-            <span className="priority-dot orange"></span>
-            <span className="label">Medium Priority</span>
-            <span className="value">{stats.priority_stats.Medium}</span>
-          </div>
-          <div className="priority-item">
-            <span className="priority-dot green"></span>
-            <span className="label">Low Priority</span>
-            <span className="value">{stats.priority_stats.Low}</span>
+          <div className="kpi-card priority-stats-card">
+            <div className="priority-item">
+              <span className="priority-dot red"></span>
+              <span className="label">High Priority</span>
+              <span className="value">{(stats as any)?.priority_stats?.High ?? 0}</span>
+            </div>
+            <div className="priority-item">
+              <span className="priority-dot orange"></span>
+              <span className="label">Medium Priority</span>
+              <span className="value">{(stats as any)?.priority_stats?.Medium ?? 0}</span>
+            </div>
+            <div className="priority-item">
+              <span className="priority-dot green"></span>
+              <span className="label">Low Priority</span>
+              <span className="value">{(stats as any)?.priority_stats?.Low ?? 0}</span>
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
       <div className="table-section">
         <div className="table-header-row">

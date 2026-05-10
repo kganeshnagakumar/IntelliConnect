@@ -39,33 +39,74 @@ This solution minimizes manual work, improves communication accuracy, enhances p
 
 ---
 
-## Comprehensive Tech Stack
+## AI Processing Pipeline
 
-<img width="1881" height="836" alt="Tech Stack Overview" src="https://github.com/user-attachments/assets/f21d435b-48d8-4ce2-8076-1f4ca734d05f" />
+IntelliConnect uses a multi-stage AI processing architecture powered by Google Gemini.
+
+### Pipeline Stages
+
+1. **Transcript Acquisition**: Ingestion of text transcripts or audio/video uploads.
+2. **AI Preprocessing**: Transcript cleaning and context segmentation.
+3. **Structured Extraction**: Automated extraction of tasks, participants, key decisions, and AI insights using Gemini `response_json_schema`.
+4. **Validation Layer**: JSON repair workflows and Pydantic schema validation.
+5. **Analytics Generation**: Structured data mapping for dashboard metrics and task prioritization.
+
+---
+
+## Comprehensive Tech Stack
 
 ### Frontend
 * **Web Framework:** React 19 via Vite
-* **Mobile Framework:** React Native
-* **Language:** TypeScript, JavaScript, HTML, CSS
+* **Language:** TypeScript
 * **Styling:** Tailwind CSS, Lucide React (Icons), Framer Motion (Animations)
 * **State Management:** Zustand, React Hook Form
-* **Routing:** React Router DOM v7
-* **Authentication:** Google OAuth (`@react-oauth/google`)
+* **Authentication:** Google OAuth
 
 ### Backend
 * **Framework:** Python (Django 6.0 Framework) + Django REST Framework (DRF)
-* **Language:** Python 3.14
-* **Data Processing:** Python NLP & Deep Learning algorithms
-* **Key Libraries:** `json-repair`, `pydantic`
+* **AI Integration:** Google GenAI API (`gemini-3.1-flash-lite`)
+* **Key Libraries:** `json-repair`, `pydantic`, `dj_database_url`
 
 ### Database
-* **Production/Cloud:** Supabase
-* **Local/Default:** SQLite (via `dj_database_url`)
+* **Production/Cloud:** Supabase (PostgreSQL)
+* **Local/Default:** SQLite
 
-### AI, Automation & Visualization
-* **AI Integration:** Google GenAI API (`gemini-3.1-flash-lite`)
-* **Automation:** SharePoint, Power Automate
-* **Visualization & Reporting:** Power BI
+---
+
+## Production Readiness
+
+The IntelliConnect architecture is designed for scalability and production use:
+
+- **Environment-based configuration**: Managed via `.env` files and `load_dotenv`.
+- **Typed architecture**: TypeScript frontend and Pydantic-validated backend.
+- **Modular APIs**: Cleanly separated Django REST endpoints.
+- **Structured Extraction**: Reliable AI outputs using strict JSON schemas.
+- **Error Handling**: Robust logging and JSON repair workflows.
+- **Docker Support**: Containerized backend for consistent deployment.
+
+---
+
+## Security Improvements
+
+Security-oriented practices implemented:
+
+- **Secret Management**: No hardcoded API keys; all sensitive data in environment variables.
+- **Token-based Authentication**: Secure access to API routes.
+- **Protected Resources**: User-specific data access patterns.
+- **Input Validation**: Strict schema enforcement for AI and API inputs.
+- **Secure Integration**: Backend-side AI processing to protect API keys.
+
+---
+
+## Future Scope
+
+Planned enhancements include:
+
+- **Mobile Application**: React Native mobile companion app.
+- **Real-time Collaboration**: WebSocket-based live meeting synchronization.
+- **Enterprise Integration**: SharePoint, Power Automate, and Power BI workflows.
+- **Advanced Analytics**: Deeper voice analytics and participant contribution metrics.
+- **Calendar Integration**: Syncing tasks directly with Google/Outlook calendars.
 
 ---
 

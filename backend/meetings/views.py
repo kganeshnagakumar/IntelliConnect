@@ -3,39 +3,20 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from .models import Meeting, Task, Participant, TranscriptSegment, IntegratedIntelligence
 from .serializers import MeetingSerializer, TaskSerializer, ParticipantSerializer, TranscriptSegmentSerializer
+from .schemas import MeetingAnalysis
+from .services.gemini_service import GeminiService
 import random
+import logging
 from django.db.models import Count, Avg
 
 import tempfile
 import os
 import json
-from google import genai
-from pydantic import BaseModel, Field
+from django.conf import settings
 
-client = genai.Client(api_key="AIzaSyCUgKOMcOHjDyT5X6KkXDmJ4ZZXlxrpZfQ")
+logger = logging.getLogger(__name__)
 
-class TaskSchema(BaseModel):
-    employee_name: str = Field(description="Name of the person assigned the task")
-    description: str = Field(description="Description of the task")
-    deadline: str = Field(description="Deadline if mentioned, else YYYY-MM-DD format roughly", default="2026-05-15")
-
-class ParticipantSchema(BaseModel):
-    name: str = Field(description="Name of the participant")
-    role: str = Field(description="Role or title of the participant, guess from context if needed")
-    contribution_score: float = Field(description="A score between 0.0 and 1.0 representing their participation level")
-
-class TranscriptSegmentSchema(BaseModel):
-    speaker: str = Field(description="Name of the speaker")
-    timestamp: str = Field(description="Timestamp of the speech segment (e.g., '00:01:23')")
-    text: str = Field(description="The actual spoken text")
-
-class MeetingAnalysis(BaseModel):
-    summary: str = Field(description="A detailed summary of the meeting")
-    key_decisions: str = Field(description="A list of key decisions made, formatted with bullet points")
-    ai_insights: str = Field(description="General AI insights about the meeting tone, productivity, etc.")
-    tasks: list[TaskSchema] = Field(description="List of tasks assigned during the meeting")
-    participants: list[ParticipantSchema] = Field(description="List of identified participants")
-    transcripts: list[TranscriptSegmentSchema] = Field(description="The transcribed segments of the meeting. If it was already a VTT, just parse it. If audio, transcribe it.")
+gemini_service = GeminiService()
 
 class MeetingViewSet(viewsets.ModelViewSet):
     queryset = Meeting.objects.all().order_by('-created_at')
@@ -44,7 +25,8 @@ class MeetingViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['get'])
     def dashboard_stats(self, request):
         total_meetings = Meeting.objects.count()
-        total_tasks = Task.objects.count()
+        completed_tasks = Task.objects.filter(status='completed').count()
+        pending_tasks = Task.objects.filter(status='pending').count()
         
         # Priority stats
         priority_stats = {
@@ -55,7 +37,8 @@ class MeetingViewSet(viewsets.ModelViewSet):
         
         return Response({
             'total_meetings': total_meetings,
-            'total_tasks': total_tasks,
+            'completed_tasks': completed_tasks,
+            'pending_tasks': pending_tasks,
             'priority_stats': priority_stats
         })
 
@@ -98,7 +81,7 @@ class MeetingViewSet(viewsets.ModelViewSet):
             
         file_name = uploaded_file.name
         
-        # Save file temporarily to upload to Gemini API
+        # Save file temporarily
         temp_path = ""
         with tempfile.NamedTemporaryFile(delete=False, suffix=os.path.splitext(file_name)[1]) as temp_file:
             for chunk in uploaded_file.chunks():
@@ -106,50 +89,13 @@ class MeetingViewSet(viewsets.ModelViewSet):
             temp_path = temp_file.name
             
         try:
-            import json_repair
-            prompt = f"Analyze this meeting recording or transcript. Category: {category}. Settings: {settings_str}. Extract the requested structured data including summary, decisions, participants, tasks, and transcripts. Note: If the audio is very long, limit the transcripts array to the 50 most important conversational segments to save tokens and prevent JSON cutoff."
-            
-            gemini_file = None
-            contents_list = [prompt]
-            
-            # If it's a text/VTT file, read it and pass as text
-            if file_name.lower().endswith(('.vtt', '.txt', '.md', '.csv')):
-                with open(temp_path, 'r', encoding='utf-8', errors='ignore') as f:
-                    text_content = f.read()
-                contents_list.append(f"Meeting Transcript:\n{text_content}")
-            else:
-                # For audio/video files
-                gemini_file = client.files.upload(file=temp_path)
-                
-                # Wait for large files (audio/video) to finish processing in Gemini
-                import time
-                while gemini_file.state.name == "PROCESSING":
-                    time.sleep(3)
-                    gemini_file = client.files.get(name=gemini_file.name)
-                    
-                if gemini_file.state.name == "FAILED":
-                    err_details = str(getattr(gemini_file, 'error', 'No additional details provided by Gemini.'))
-                    raise Exception(f"Audio/Video file processing failed in Gemini API. Reason: {err_details}")
-                    
-                contents_list.append(gemini_file)
-            
-            response = client.models.generate_content(
-                model="gemini-3.1-flash-lite",
-                contents=contents_list,
-                config={
-                    "response_mime_type": "application/json",
-                    "response_json_schema": MeetingAnalysis.model_json_schema(),
-                },
+            analysis_data = gemini_service.process_meeting_file(
+                temp_path, 
+                file_name, 
+                category=category, 
+                settings_str=settings_str
             )
             
-            # Use json_repair to robustly parse potentially truncated JSON
-            analysis_data = json_repair.loads(response.text)
-            
-            if gemini_file:
-                try:
-                    client.files.delete(name=gemini_file.name)
-                except:
-                    pass
             os.unlink(temp_path)
             
             # Instead of saving to the database, we return the parsed data to the frontend
@@ -211,9 +157,7 @@ class MeetingViewSet(viewsets.ModelViewSet):
             return Response(response_data, status=status.HTTP_200_OK)
             
         except Exception as e:
-            import traceback
-            with open("error_log.txt", "w") as f:
-                f.write(traceback.format_exc())
+            logger.exception("Error processing meeting")
             if temp_path and os.path.exists(temp_path):
                 os.unlink(temp_path)
             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
@@ -318,8 +262,7 @@ class MeetingViewSet(viewsets.ModelViewSet):
             serializer = self.get_serializer(meeting)
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         except Exception as e:
-            import traceback
-            print(traceback.format_exc())
+            logger.exception("Error saving analysis")
             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 class TaskViewSet(viewsets.ModelViewSet):
