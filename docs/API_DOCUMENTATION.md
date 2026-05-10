@@ -4,8 +4,8 @@
 
 | Method | Endpoint | Description | Auth Required |
 |--------|----------|-------------|---------------|
-| POST | `/api/auth/save_user/` | Synchronizes user data from Google OAuth with the backend. Creates or updates the user record. | No |
-| | | **Request**: `{ "email": "str", "name": "str", "avatar_url": "str" }` | |
+| POST | `/api/auth/save-user/` | Synchronizes user data from Google OAuth with the backend. Creates or updates the user record after token verification. | Bearer token |
+| | | **Request**: `{ "token": "str", "email": "str", "name": "str", "avatar_url": "str" }` | |
 | | | **Response**: `{ "message": "str", "is_new": bool, "user": {...} }` | |
 
 ## Meeting Core & Processing

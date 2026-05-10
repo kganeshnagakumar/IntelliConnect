@@ -6,6 +6,7 @@ import { useNavigate } from 'react-router-dom';
 import './LoginScreen.css';
 import backgroundImage from '../../assets/login-background-img.png';
 import logoImage from '../../assets/logo-img.png';
+import { env } from '../../config/env';
 
 const GoogleIcon = () => (
   <svg viewBox="0 0 24 24" width="24" height="24">
@@ -50,10 +51,14 @@ const LoginScreen: React.FC = () => {
         const userInfo = await userInfoRes.json();
 
         // 2. Save user info in Django backend (Supabase)
-        const backendRes = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/auth/save-user/`, {
+        const backendRes = await fetch(`${env.backendUrl}/api/auth/save-user/`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${tokenResponse.access_token}`,
+          },
           body: JSON.stringify({
+            token: tokenResponse.access_token,
             email: userInfo.email,
             name: userInfo.name,
             provider: 'google',

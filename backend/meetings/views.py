@@ -12,7 +12,11 @@ import json
 from google import genai
 from pydantic import BaseModel, Field
 
-client = genai.Client(api_key="AIzaSyCUgKOMcOHjDyT5X6KkXDmJ4ZZXlxrpZfQ")
+def get_gemini_client():
+    gemini_api_key = os.getenv("GEMINI_API_KEY")
+    if not gemini_api_key:
+        raise ValueError("GEMINI_API_KEY is not configured.")
+    return genai.Client(api_key=gemini_api_key)
 
 class TaskSchema(BaseModel):
     employee_name: str = Field(description="Name of the person assigned the task")
@@ -109,6 +113,7 @@ class MeetingViewSet(viewsets.ModelViewSet):
             import json_repair
             prompt = f"Analyze this meeting recording or transcript. Category: {category}. Settings: {settings_str}. Extract the requested structured data including summary, decisions, participants, tasks, and transcripts. Note: If the audio is very long, limit the transcripts array to the 50 most important conversational segments to save tokens and prevent JSON cutoff."
             
+            client = get_gemini_client()
             gemini_file = None
             contents_list = [prompt]
             

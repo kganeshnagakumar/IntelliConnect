@@ -9,12 +9,21 @@ Intelliconnect requires two parallel deployments for the frontend (static hostin
 DEBUG=False
 SECRET_KEY=your_secure_django_key
 DATABASE_URL=postgres://user:password@hostname:5432/dbname
+GEMINI_API_KEY=your_gemini_api_key
+SUPABASE_URL=https://your-project.supabase.co
+SUPABASE_KEY=your_supabase_service_role_key
+GOOGLE_CLIENT_ID=your_google_oauth_client_id
+GOOGLE_CLIENT_SECRET=your_google_oauth_client_secret
+EMAIL_HOST_USER=your_email_address
+EMAIL_HOST_PASSWORD=your_email_password_or_app_password
 ```
-*(Note: GenAI key currently hardcoded, requires refactoring to read `GEMINI_API_KEY`)*
 
 ### Frontend (`frontend/.env`)
 ```env
+VITE_BACKEND_URL=https://your-backend-domain
 VITE_GOOGLE_CLIENT_ID=your_google_oauth_client_id
+VITE_SUPABASE_URL=https://your-project.supabase.co
+VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
 ```
 
 ## Build & Deployment Steps

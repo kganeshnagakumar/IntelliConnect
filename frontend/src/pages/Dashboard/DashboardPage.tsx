@@ -1,65 +1,76 @@
-import React from 'react';
-import { 
+import React, { useEffect, useMemo, useState } from 'react';
+import {
   Users, 
   Camera, 
   Clock, 
   MoreHorizontal,
-  ChevronRight,
   ListTodo,
   BarChart2
 } from 'lucide-react';
 import './DashboardPage.css';
+import { dashboardService } from '../../services/dashboardService';
+import type { DashboardMeeting, DashboardStats } from '../../services/dashboardService';
 
 const DashboardPage: React.FC = () => {
-  // Hardcoded data to match the screenshot exactly as requested
-  const stats = {
-    total_meetings: 2,
-    total_tasks: 5,
-    priority_stats: { High: 0, Medium: 2, Low: 0 }
+  const [stats, setStats] = useState<DashboardStats | null>(null);
+  const [meetings, setMeetings] = useState<DashboardMeeting[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [retryToken, setRetryToken] = useState(0);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadDashboardData = async () => {
+      try {
+        const [statsResponse, meetingsResponse] = await Promise.all([
+          dashboardService.getStats(),
+          dashboardService.getMeetings(),
+        ]);
+        if (cancelled) return;
+        setStats(statsResponse);
+        setMeetings(meetingsResponse);
+        setError(null);
+      } catch (fetchError) {
+        if (cancelled) return;
+        console.error('Failed to fetch dashboard data', fetchError);
+        setError('Failed to load dashboard data. Please try again.');
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      }
+    };
+
+    loadDashboardData();
+    return () => {
+      cancelled = true;
+    };
+  }, [retryToken]);
+
+  const handleRetry = () => {
+    setLoading(true);
+    setError(null);
+    setRetryToken((prev) => prev + 1);
   };
 
-  const meetings = [
-    {
-      id: 1,
-      title: "Finance & Corporate Committee - Zoom Meeting - Waipā District Council (128k)_compressed.mp3",
-      description: "This meeting of the Whalara District Council prima...",
-      priority: "HIGH",
-      participants: 8,
-      date: "5/8/2026",
-      tasks: "2 extracted",
-      duration: "45:00"
-    },
-    {
-      id: 2,
-      title: "Marketing Campaign Review - Q2 Launch (B)",
-      description: "This meeting of the Marketing Campaign Review - Q2 Launch",
-      priority: "MEDIUM",
-      participants: 10,
-      date: "5/5/2026",
-      tasks: "3 extracted",
-      duration: "60:00"
-    },
-    {
-      id: 3,
-      title: "Product Backlog Refinement - Sprint 12 (C)",
-      description: "This meeting of the Whalara District Council cov...",
-      priority: "LOW",
-      participants: 6,
-      date: "5/5/2026",
-      tasks: "0 extracted",
-      duration: "45:00"
-    },
-    {
-      id: 4,
-      title: "Executive Board Briefing - Strategic Plan (D)",
-      description: "This meeting of the Whalara District Council primo...",
-      priority: "HIGH",
-      participants: 12,
-      date: "5/8/2026",
-      tasks: "2 extracted",
-      duration: "75:00"
-    }
-  ];
+  const priorityStats = useMemo(
+    () => stats?.priority_stats ?? { High: 0, Medium: 0, Low: 0 },
+    [stats],
+  );
+
+  if (loading) {
+    return <div className="dashboard-status">Loading dashboard data...</div>;
+  }
+
+  if (error) {
+    return (
+      <div className="dashboard-status">
+        <p>{error}</p>
+        <button className="retry-btn" onClick={handleRetry}>Retry</button>
+      </div>
+    );
+  }
 
   return (
     <div className="dashboard-page">
@@ -83,7 +94,7 @@ const DashboardPage: React.FC = () => {
           </div>
           <div className="kpi-info">
             <span className="kpi-label">Total Meetings</span>
-            <h3 className="kpi-value">{stats.total_meetings}</h3>
+            <h3 className="kpi-value">{stats?.total_meetings ?? 0}</h3>
           </div>
         </div>
 
@@ -93,7 +104,7 @@ const DashboardPage: React.FC = () => {
           </div>
           <div className="kpi-info">
             <span className="kpi-label">Extracted Tasks</span>
-            <h3 className="kpi-value">{stats.total_tasks}</h3>
+            <h3 className="kpi-value">{stats?.total_tasks ?? 0}</h3>
           </div>
         </div>
 
@@ -101,17 +112,17 @@ const DashboardPage: React.FC = () => {
           <div className="priority-item">
             <span className="priority-dot red"></span>
             <span className="label">High Priority</span>
-            <span className="value">{stats.priority_stats.High}</span>
+            <span className="value">{priorityStats.High}</span>
           </div>
           <div className="priority-item">
             <span className="priority-dot orange"></span>
             <span className="label">Medium Priority</span>
-            <span className="value">{stats.priority_stats.Medium}</span>
+            <span className="value">{priorityStats.Medium}</span>
           </div>
           <div className="priority-item">
             <span className="priority-dot green"></span>
             <span className="label">Low Priority</span>
-            <span className="value">{stats.priority_stats.Low}</span>
+            <span className="value">{priorityStats.Low}</span>
           </div>
         </div>
       </div>
@@ -136,41 +147,49 @@ const DashboardPage: React.FC = () => {
               </tr>
             </thead>
             <tbody>
-              {meetings.map((m) => (
-                <tr key={m.id} className="table-row">
-                  <td style={{ width: '40%' }}>
-                    <span className="meeting-title">{m.title}</span>
-                    <span className="meeting-desc">{m.description}</span>
-                  </td>
-                  <td>
-                    <div className={`priority-badge ${m.priority.toLowerCase()}`}>
-                      <span className="priority-dot" style={{ backgroundColor: 'currentColor' }}></span>
-                      {m.priority}
-                    </div>
-                  </td>
-                  <td>
-                    <div className="cell-content">
-                      <Users size={14} />
-                      {m.participants}
-                    </div>
-                  </td>
-                  <td>
-                    <div className="cell-content">{m.date}</div>
-                  </td>
-                  <td>
-                    <span className="task-badge">{m.tasks}</span>
-                  </td>
-                  <td>
-                    <div className="cell-content">
-                      <Clock size={14} />
-                      {m.duration}
-                    </div>
-                  </td>
-                  <td>
-                    <MoreHorizontal size={18} className="more-btn" />
-                  </td>
+              {meetings.length > 0 ? (
+                meetings.map((meeting) => (
+                  <tr key={meeting.id} className="table-row">
+                    <td style={{ width: '40%' }}>
+                      <span className="meeting-title">{meeting.title}</span>
+                      <span className="meeting-desc">
+                        {meeting.summary ? `${meeting.summary.substring(0, 80)}...` : 'No summary available.'}
+                      </span>
+                    </td>
+                    <td>
+                      <div className={`priority-badge ${(meeting.priority || 'Medium').toLowerCase()}`}>
+                        <span className="priority-dot" style={{ backgroundColor: 'currentColor' }}></span>
+                        {(meeting.priority || 'Medium').toUpperCase()}
+                      </div>
+                    </td>
+                    <td>
+                      <div className="cell-content">
+                        <Users size={14} />
+                        {meeting.participants_count}
+                      </div>
+                    </td>
+                    <td>
+                      <div className="cell-content">{new Date(meeting.created_at).toLocaleDateString()}</div>
+                    </td>
+                    <td>
+                      <span className="task-badge">{meeting.tasks_count} extracted</span>
+                    </td>
+                    <td>
+                      <div className="cell-content">
+                        <Clock size={14} />
+                        {meeting.duration || 'N/A'}
+                      </div>
+                    </td>
+                    <td>
+                      <MoreHorizontal size={18} className="more-btn" />
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                <tr className="table-row">
+                  <td colSpan={7} className="dashboard-empty-row">No meetings available.</td>
                 </tr>
-              ))}
+              )}
             </tbody>
           </table>
         </div>
