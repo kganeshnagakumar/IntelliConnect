@@ -69,3 +69,7 @@ urllib3==2.6.3
 websockets==15.0.1
 yarl==1.23.0
 zstandard==0.25.0
+celery==5.4.0
+google-genai==2.0.1
+json-repair==0.59.6
+redis==5.3.1

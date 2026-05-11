@@ -9,8 +9,10 @@ Intelliconnect requires two parallel deployments for the frontend (static hostin
 DEBUG=False
 SECRET_KEY=your_secure_django_key
 DATABASE_URL=postgres://user:password@hostname:5432/dbname
+GEMINI_API_KEY=your_gemini_api_key
+CELERY_BROKER_URL=redis://hostname:6379/0
+CELERY_RESULT_BACKEND=redis://hostname:6379/0
 ```
-*(Note: GenAI key currently hardcoded, requires refactoring to read `GEMINI_API_KEY`)*
 
 ### Frontend (`frontend/.env`)
 ```env
@@ -24,6 +26,9 @@ The backend is a standard WSGI application.
 - **Command**: `gunicorn intelliconnect_backend.wsgi:application`
 - **Pre-start**: Run `python manage.py migrate` and `python manage.py collectstatic`.
 - Ensure `ALLOWED_HOSTS` in `settings.py` includes your production domain.
+- Run a separate Celery worker process:
+  - **Worker Command**: `celery -A intelliconnect_backend worker --loglevel=info`
+- Provision Redis (or compatible broker/backend) and set `CELERY_BROKER_URL` / `CELERY_RESULT_BACKEND`.
 
 ### 2. Frontend Deployment (e.g., Vercel, Netlify)
 The frontend is built as a static SPA.

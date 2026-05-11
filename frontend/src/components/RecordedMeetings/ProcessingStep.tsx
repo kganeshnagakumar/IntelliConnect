@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { 
   CheckCircle, 
   Circle, 
@@ -32,7 +32,7 @@ const ProcessingStep: React.FC<ProcessingStepProps> = ({ onComplete, file, confi
 
   useEffect(() => {
     let isMounted = true;
-    let interval: NodeJS.Timeout;
+    let interval: ReturnType<typeof setInterval>;
     
     const startProcessing = async () => {
       // Fake progress up to 90%
@@ -66,12 +66,38 @@ const ProcessingStep: React.FC<ProcessingStepProps> = ({ onComplete, file, confi
         }
         
         const data = await response.json();
+        let resultData = data;
+
+        if (response.status === 202 && data.job_id) {
+          let state = 'PENDING';
+          while (isMounted && state !== 'SUCCESS') {
+            const statusResponse = await fetch(`${backendUrl}/api/meetings/process_status/?job_id=${encodeURIComponent(data.job_id)}`);
+            if (!statusResponse.ok) {
+              const statusError = await statusResponse.json().catch(() => ({}));
+              throw new Error(statusError.error || 'Failed to fetch processing status');
+            }
+
+            const statusData = await statusResponse.json();
+            state = statusData.state;
+
+            if (state === 'SUCCESS') {
+              resultData = statusData.result;
+              break;
+            }
+
+            if (state === 'FAILURE') {
+              throw new Error(statusData.error || 'Meeting processing failed');
+            }
+
+            await new Promise(resolve => setTimeout(resolve, 2000));
+          }
+        }
         
         if (isMounted) {
           clearInterval(interval);
           setProgress(100);
           setCurrentStage(stages.length - 1);
-          setTimeout(() => onComplete(data), 500);
+          setTimeout(() => onComplete(resultData), 500);
         }
       } catch (error: any) {
         console.error("Processing failed", error);

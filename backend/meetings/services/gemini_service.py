@@ -4,7 +4,7 @@ import logging
 import json_repair
 from google import genai
 from django.conf import settings
-from .schemas import MeetingAnalysis
+from ..schemas import MeetingAnalysis
 
 logger = logging.getLogger(__name__)
 

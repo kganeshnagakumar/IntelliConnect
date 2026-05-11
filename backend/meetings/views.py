@@ -1,22 +1,18 @@
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
+from celery.result import AsyncResult
 from .models import Meeting, Task, Participant, TranscriptSegment, IntegratedIntelligence
 from .serializers import MeetingSerializer, TaskSerializer, ParticipantSerializer, TranscriptSegmentSerializer
-from .schemas import MeetingAnalysis
-from .services.gemini_service import GeminiService
+from .tasks import process_meeting_task
 import random
 import logging
 from django.db.models import Count, Avg
 
 import tempfile
 import os
-import json
-from django.conf import settings
 
 logger = logging.getLogger(__name__)
-
-gemini_service = GeminiService()
 
 class MeetingViewSet(viewsets.ModelViewSet):
     queryset = Meeting.objects.all().order_by('-created_at')
@@ -89,78 +85,39 @@ class MeetingViewSet(viewsets.ModelViewSet):
             temp_path = temp_file.name
             
         try:
-            analysis_data = gemini_service.process_meeting_file(
-                temp_path, 
-                file_name, 
-                category=category, 
+            task_result = process_meeting_task.delay(
+                temp_path,
+                file_name,
+                category=category,
                 settings_str=settings_str
             )
-            
-            os.unlink(temp_path)
-            
-            # Instead of saving to the database, we return the parsed data to the frontend
-            import random
-            meeting_id = f"M{random.randint(100, 999)}"
-            
-            # Format tasks
-            tasks_data = []
-            for t in analysis_data.get('tasks', []):
-                deadline_val = t.get('deadline')
-                if deadline_val and isinstance(deadline_val, str) and len(deadline_val) == 10 and deadline_val.count('-') == 2:
-                    pass
-                else:
-                    deadline_val = None
-                tasks_data.append({
-                    'employee_name': t.get('employee_name', 'Unknown')[:255],
-                    'description': t.get('description', ''),
-                    'deadline': deadline_val
-                })
-                
-            # Format participants
-            participants_data = []
-            for p in analysis_data.get('participants', []):
-                name_val = p.get('name', 'Unknown')[:255]
-                default_email = f"{name_val.lower().replace(' ', '.')}@company.com"
-                participants_data.append({
-                    'name': name_val,
-                    'role': p.get('role', 'Participant')[:255],
-                    'email': p.get('email', default_email),
-                    'contribution_score': float(p.get('contribution_score', 0.5))
-                })
-                
-            # Format transcripts
-            transcripts_data = []
-            for tr in analysis_data.get('transcripts', []):
-                transcripts_data.append({
-                    'speaker': tr.get('speaker', 'Unknown')[:255],
-                    'timestamp': tr.get('timestamp', '00:00:00')[:50],
-                    'text': tr.get('text', '')
-                })
-
-            response_data = {
-                'meeting_id': meeting_id,
-                'title': file_name,
-                'category': category,
-                'status': 'completed',
-                'priority': 'Medium',
-                'duration': '45:00',
-                'summary': analysis_data.get('summary', ''),
-                'key_decisions': analysis_data.get('key_decisions', ''),
-                'ai_insights': analysis_data.get('ai_insights', ''),
-                'tasks': tasks_data,
-                'participants': participants_data,
-                'transcripts': transcripts_data,
-                'tasks_count': len(tasks_data),
-                'participants_count': len(participants_data)
-            }
-            
-            return Response(response_data, status=status.HTTP_200_OK)
-            
+            return Response({"job_id": task_result.id}, status=status.HTTP_202_ACCEPTED)
         except Exception as e:
             logger.exception("Error processing meeting")
             if temp_path and os.path.exists(temp_path):
                 os.unlink(temp_path)
             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    @action(detail=False, methods=['get'])
+    def process_status(self, request):
+        job_id = request.query_params.get("job_id")
+        if not job_id:
+            return Response({"error": "job_id query parameter is required"}, status=status.HTTP_400_BAD_REQUEST)
+
+        task_result = AsyncResult(job_id)
+        response_data = {
+            "job_id": job_id,
+            "state": task_result.state,
+        }
+
+        if task_result.state == "SUCCESS":
+            response_data["result"] = task_result.result
+        elif task_result.state == "FAILURE":
+            response_data["error"] = str(task_result.result)
+        elif task_result.info:
+            response_data["info"] = str(task_result.info)
+
+        return Response(response_data, status=status.HTTP_200_OK)
 
     @action(detail=False, methods=['post'])
     def save_analysis(self, request):

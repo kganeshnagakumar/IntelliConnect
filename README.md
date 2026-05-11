@@ -143,13 +143,27 @@ cd intelliconnect
 Navigate to the backend directory, set up your virtual environment, and run the server:
 
 ```bash
-cd backend
+cd frontend
 python -m venv venv
 source venv/bin/activate  # On Windows: venv\Scripts\activate
 pip install -r requirements.txt
-python manage.py migrate
-python manage.py runserver
+PYTHONPATH=../backend python manage.py migrate
+PYTHONPATH=../backend python manage.py runserver
 
+```
+
+### 2.1 Background Worker (required for meeting processing)
+
+Start Redis and Celery so `/api/meetings/process_meeting/` runs asynchronously:
+
+```bash
+# Terminal 1
+redis-server
+
+# Terminal 2
+cd frontend
+source venv/bin/activate
+PYTHONPATH=../backend celery -A intelliconnect_backend worker --loglevel=info
 ```
 
 ### 3. Frontend Setup
