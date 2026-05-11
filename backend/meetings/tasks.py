@@ -9,13 +9,22 @@ from .services.gemini_service import GeminiService
 logger = logging.getLogger(__name__)
 
 
+def is_iso_date_string(deadline_val):
+    return bool(
+        deadline_val
+        and isinstance(deadline_val, str)
+        and len(deadline_val) == 10
+        and deadline_val.count("-") == 2
+    )
+
+
 def build_processed_meeting_response(analysis_data, file_name, category):
     meeting_id = f"M{random.randint(100, 999)}"
 
     tasks_data = []
     for task in analysis_data.get("tasks", []):
         deadline_val = task.get("deadline")
-        if not (deadline_val and isinstance(deadline_val, str) and len(deadline_val) == 10 and deadline_val.count("-") == 2):
+        if not is_iso_date_string(deadline_val):
             deadline_val = None
 
         tasks_data.append(

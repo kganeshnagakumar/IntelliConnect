@@ -18,6 +18,8 @@ interface ProcessingStepProps {
   config: any;
 }
 
+const POLLING_INTERVAL_MS = 2000;
+
 const ProcessingStep: React.FC<ProcessingStepProps> = ({ onComplete, file, config }) => {
   const [progress, setProgress] = useState(0);
   const [currentStage, setCurrentStage] = useState(0);
@@ -74,7 +76,7 @@ const ProcessingStep: React.FC<ProcessingStepProps> = ({ onComplete, file, confi
             const statusResponse = await fetch(`${backendUrl}/api/meetings/process_status/?job_id=${encodeURIComponent(data.job_id)}`);
             if (!statusResponse.ok) {
               const statusError = await statusResponse.json().catch(() => ({}));
-              throw new Error(statusError.error || 'Failed to fetch processing status');
+              throw new Error(statusError.error || `Failed to fetch processing status (${statusResponse.status})`);
             }
 
             const statusData = await statusResponse.json();
@@ -89,7 +91,7 @@ const ProcessingStep: React.FC<ProcessingStepProps> = ({ onComplete, file, confi
               throw new Error(statusData.error || 'Meeting processing failed');
             }
 
-            await new Promise(resolve => setTimeout(resolve, 2000));
+            await new Promise(resolve => setTimeout(resolve, POLLING_INTERVAL_MS));
           }
         }
         

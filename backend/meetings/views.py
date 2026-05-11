@@ -76,9 +76,8 @@ class MeetingViewSet(viewsets.ModelViewSet):
             return Response({"error": "No file uploaded"}, status=status.HTTP_400_BAD_REQUEST)
             
         file_name = uploaded_file.name
-        
+        temp_path = None
         # Save file temporarily
-        temp_path = ""
         with tempfile.NamedTemporaryFile(delete=False, suffix=os.path.splitext(file_name)[1]) as temp_file:
             for chunk in uploaded_file.chunks():
                 temp_file.write(chunk)
@@ -113,7 +112,7 @@ class MeetingViewSet(viewsets.ModelViewSet):
         if task_result.state == "SUCCESS":
             response_data["result"] = task_result.result
         elif task_result.state == "FAILURE":
-            response_data["error"] = str(task_result.result)
+            response_data["error"] = str(task_result.result or task_result.info)
         elif task_result.info:
             response_data["info"] = str(task_result.info)
 

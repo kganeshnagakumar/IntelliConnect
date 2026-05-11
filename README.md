@@ -140,15 +140,16 @@ cd intelliconnect
 
 ### 2. Backend Setup
 
-Navigate to the backend directory, set up your virtual environment, and run the server:
+Set up your virtual environment and run the Django backend (this repository keeps `manage.py` in `frontend/`, so use `PYTHONPATH=../backend`):
 
 ```bash
 cd frontend
 python -m venv venv
 source venv/bin/activate  # On Windows: venv\Scripts\activate
 pip install -r requirements.txt
-PYTHONPATH=../backend python manage.py migrate
-PYTHONPATH=../backend python manage.py runserver
+export PYTHONPATH=../backend
+python manage.py migrate
+python manage.py runserver
 
 ```
 
@@ -163,7 +164,8 @@ redis-server
 # Terminal 2
 cd frontend
 source venv/bin/activate
-PYTHONPATH=../backend celery -A intelliconnect_backend worker --loglevel=info
+export PYTHONPATH=../backend
+celery -A intelliconnect_backend worker --loglevel=info
 ```
 
 ### 3. Frontend Setup
