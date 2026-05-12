@@ -1,0 +1,7 @@
+{
+  "name": "intelliconnect-root",
+  "private": true,
+  "scripts": {
+    "build": "cd frontend/console-sensei && npm install && npm run build"
+  }
+}
