@@ -1,0 +1,84 @@
+services:
+  # ==========================================
+  # 1. Backend Web Service (Django + Docker)
+  # ==========================================
+  - type: web
+    name: intelli3-backend
+    env: docker
+    dockerContext: backend
+    dockerfilePath: backend/docker/Dockerfile
+    # Use gunicorn in production instead of runserver if modifying the Dockerfile,
+    # but the current Dockerfile default CMD will work for a basic Render deploy.
+    plan: free
+    healthCheckPath: /
+    envVars:
+      - key: DEBUG
+        value: "False"
+      - key: ALLOWED_HOSTS
+        value: "*"
+      - key: REDIS_URL
+        fromService:
+          type: redis
+          name: intelli3-redis
+          property: connectionString
+      # Add these dynamically in the Render dashboard:
+      - key: DATABASE_URL
+        sync: false
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_KEY
+        sync: false
+      - key: SUPABASE_JWT_SECRET
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+
+  # ==========================================
+  # 2. Celery Worker Service (Docker)
+  # ==========================================
+  - type: worker
+    name: intelli3-celery
+    env: docker
+    dockerContext: backend
+    dockerfilePath: backend/docker/Dockerfile
+    dockerCommand: "celery -A config worker --loglevel=info"
+    plan: free
+    envVars:
+      - key: REDIS_URL
+        fromService:
+          type: redis
+          name: intelli3-redis
+          property: connectionString
+      # Add these dynamically in the Render dashboard:
+      - key: DATABASE_URL
+        sync: false
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_KEY
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+
+  # ==========================================
+  # 3. Redis Instance (for Celery Queue)
+  # ==========================================
+  - type: redis
+    name: intelli3-redis
+    plan: free
+    ipAllowList: [] # Allows all internal Render connections
+
+  # ==========================================
+  # 4. Frontend Static Site (React/Vite)
+  # ==========================================
+  - type: web
+    name: intelli3-frontend
+    env: static
+    buildCommand: cd frontend/console-sensei && npm install && npm run build
+    staticPublishPath: frontend/console-sensei/dist
+    plan: free
+    envVars:
+      - key: VITE_BACKEND_URL
+        fromService:
+          type: web
+          name: intelli3-backend
+          property: url
