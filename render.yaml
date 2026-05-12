@@ -78,7 +78,4 @@ services:
     plan: free
     envVars:
       - key: VITE_BACKEND_URL
-        fromService:
-          type: web
-          name: intelli3-backend
-          property: url
+        sync: false
