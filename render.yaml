@@ -67,15 +67,4 @@ services:
     plan: free
     ipAllowList: [] # Allows all internal Render connections
 
-  # ==========================================
-  # 4. Frontend Static Site (React/Vite)
-  # ==========================================
-  - type: web
-    name: intelli3-frontend
-    env: static
-    buildCommand: cd frontend/console-sensei && npm install && npm run build
-    staticPublishPath: frontend/console-sensei/dist
-    plan: free
-    envVars:
-      - key: VITE_BACKEND_URL
-        sync: false
+
