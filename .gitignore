@@ -36,8 +36,9 @@ dist/
 downloads/
 eggs/
 .eggs/
-lib/
-lib64/
+# Prevent ignoring frontend lib folder
+!frontend/console-sensei/src/lib/
+!frontend/console-sensei/src/lib/*
 parts/
 sdist/
 var/
