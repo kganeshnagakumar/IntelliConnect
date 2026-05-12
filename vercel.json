@@ -1,0 +1,11 @@
+{
+  "version": 2,
+  "buildCommand": "cd frontend/console-sensei && npm install && npm run build",
+  "outputDirectory": "frontend/console-sensei/dist",
+  "rewrites": [
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ]
+}
